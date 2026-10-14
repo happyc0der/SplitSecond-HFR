@@ -59,6 +59,16 @@ std::string Utf8(const std::wstring& w) {
     return s;
 }
 
+const char* WineVersion() {
+    using Fn = const char*(__cdecl*)();
+    static const char* v = [] {
+        HMODULE ntdll = GetModuleHandleW(L"ntdll.dll");
+        auto f = ntdll ? reinterpret_cast<Fn>(GetProcAddress(ntdll, "wine_get_version")) : nullptr;
+        return f ? f() : nullptr;
+    }();
+    return v;
+}
+
 std::string DescribeAddress(uintptr_t a) {
     char buf[300];
     if (InGameImage(a)) {

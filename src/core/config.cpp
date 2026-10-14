@@ -26,8 +26,13 @@ void LoadConfig(const std::wstring& ini) {
     c.statsIntervalSec = ReadInt(ini, L"Instrumentation", L"StatsIntervalSec", c.statsIntervalSec);
     c.crashHandler = ReadInt(ini, L"Instrumentation", L"CrashHandler", c.crashHandler) != 0;
     c.mode = ReadInt(ini, L"Timing", L"Mode", c.mode) == 30 ? 30 : 60;
-    c.preciseLimiter = ReadInt(ini, L"Timing", L"PreciseLimiter", c.preciseLimiter) != 0;
+    int precise = ReadInt(ini, L"Timing", L"PreciseLimiter", c.preciseLimiter ? 1 : 0);
+    c.preciseLimiter = precise != 0;
+    c.preciseForce = precise >= 2;
     c.fixAi30 = ReadInt(ini, L"Fixes", L"AI30Hz", c.fixAi30) != 0;
+    c.memoryLog = ReadInt(ini, L"Logging", L"MemoryLog", c.memoryLog) != 0;
+    c.memoryLogSec = ReadInt(ini, L"Logging", L"MemoryLogSec", c.memoryLogSec);
+    if (c.memoryLogSec < 1) c.memoryLogSec = 1;
     c.keyDump = ReadInt(ini, L"Hotkeys", L"Dump", c.keyDump);
     c.keyToggle = ReadInt(ini, L"Hotkeys", L"ToggleFps", c.keyToggle);
     c.keyMarker = ReadInt(ini, L"Hotkeys", L"Marker", c.keyMarker);

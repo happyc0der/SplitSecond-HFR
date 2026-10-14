@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.25)
-project(SplitSecondHFR VERSION 0.1.1 LANGUAGES C CXX)
+project(SplitSecondHFR VERSION 0.1.2 LANGUAGES C CXX)
 
 if(NOT CMAKE_SIZEOF_VOID_P EQUAL 4)
   message(FATAL_ERROR "Split/Second is a 32-bit game: configure with -A Win32")
@@ -29,6 +29,7 @@ set(HFR_SOURCES
   src/core/patchset.cpp
   src/core/iat.cpp
   src/core/frames.cpp
+  src/core/memstats.cpp
   src/core/exports.def
   src/timing/limiter.cpp
   src/fixes/fix_ai30.cpp
@@ -40,8 +41,7 @@ set(HFR_DEV_SOURCES
   src/instr/api_hooks.cpp
   src/instr/sampler.cpp
   src/instr/dumper.cpp
-  src/instr/probes.cpp
-  src/instr/memstats.cpp)
+  src/instr/probes.cpp)
 
 if(HFR_DEVTOOLS)
   foreach(f IN LISTS HFR_DEV_SOURCES)
@@ -53,7 +53,7 @@ if(HFR_DEVTOOLS)
 endif()
 
 add_library(DXFreezerServer SHARED ${HFR_SOURCES})
-target_link_libraries(DXFreezerServer PRIVATE safetyhook)
+target_link_libraries(DXFreezerServer PRIVATE safetyhook psapi)
 if(HFR_DEVTOOLS)
   target_link_libraries(DXFreezerServer PRIVATE dbghelp psapi)
   target_compile_definitions(DXFreezerServer PRIVATE HFR_DEVTOOLS=1)

@@ -73,7 +73,6 @@ DWORD WINAPI StatsWriterThread(void*) {
                      LimiterMode(), cnt, g_cfg.statsIntervalSec, sum / cnt, 1000.0 * cnt / sum, mn, mx, psum / cnt);
 #if HFR_DEVTOOLS
         if (g_cfg.probes) ReportProbes(g_cfg.statsIntervalSec, cnt);
-        if (g_cfg.iatHooks || g_cfg.probes || g_cfg.sampler) LogMemoryStats();
         if (g_cfg.iatHooks) {
             stats::WriteApiSnapshot("");
             uint32_t gen = stats::g_markerGen.load();
@@ -96,12 +95,15 @@ void StartStatsWriter() {
     if (h) CloseHandle(h);
 }
 
-#if HFR_DEVTOOLS
 void AddMarker(const char* what) {
-    uint32_t gen = stats::g_markerGen.fetch_add(1) + 1;
-    Log("MARKER %u (%s) at frame %u", gen, what, g_frame);
-}
+    static uint32_t n = 0;
+#if HFR_DEVTOOLS
+    n = stats::g_markerGen.fetch_add(1) + 1;
+#else
+    ++n;
 #endif
+    Log("MARKER %u (%s) at frame %u", n, what, g_frame);
+}
 
 // Called on the main thread from the Present hook, after the real Present returned.
 void FrameTick(HWND, int64_t tEnter, int64_t tExit) {
@@ -118,9 +120,9 @@ void FrameTick(HWND, int64_t tEnter, int64_t tExit) {
 
     if (OurWindowIsForeground()) {
         if (KeyPressed(g_cfg.keyToggle)) LimiterRequestToggle();
+        if (KeyPressed(g_cfg.keyMarker)) AddMarker("hotkey");
 #if HFR_DEVTOOLS
         if (KeyPressed(g_cfg.keyDump)) RequestDump("hotkey");
-        if (KeyPressed(g_cfg.keyMarker)) AddMarker("hotkey");
 #endif
     }
     LimiterFrame();

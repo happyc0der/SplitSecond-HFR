@@ -105,13 +105,22 @@ int g_ticks = 2;
 void LimiterInit() {
     BuildPatches();
     g_waitTimer = CreateWaitableTimerExW(nullptr, nullptr, CREATE_WAITABLE_TIMER_HIGH_RESOLUTION, TIMER_ALL_ACCESS);
+    if (g_cfg.preciseLimiter && !g_cfg.preciseForce && WineVersion()) {
+        // Under Wine/Proton (seen with Proton-CachyOS 11 + ntsync) the precise path ends in a host-side heap abort at
+        // the main menu (GitHub issue #1); the game's own Sleep-based pacing works fine there.
+        Log("Limiter: Wine/Proton detected - precise pacing disabled (PreciseLimiter=2 forces it)");
+        g_cfg.preciseLimiter = false;
+    }
     if (g_cfg.preciseLimiter &&
         !HookIatSlot("KERNEL32.dll", "Sleep", reinterpret_cast<void*>(&h_Sleep), reinterpret_cast<void**>(&o_Sleep))) {
         Log("Limiter: Sleep hook failed, precise pacing disabled");
         g_cfg.preciseLimiter = false;
     }
-    if (auto h = safetyhook::MidHook::create(reinterpret_cast<void*>(0x00558984), &OnTicks)) g_ticksHook = std::move(*h);
-    else Log("Limiter: ticks hook FAILED (frame-dt fixes will use 1/30)");
+    // Tick capture is a code patch in the main loop; install it only when a fix consumes the tick count.
+    if (g_cfg.fixAi30) {
+        if (auto h = safetyhook::MidHook::create(reinterpret_cast<void*>(0x00558984), &OnTicks)) g_ticksHook = std::move(*h);
+        else Log("Limiter: ticks hook FAILED (AI 30 Hz fix inactive)");
+    }
     std::string why;
     Log("Limiter: FIX-001 %s; precise pacing %s; requested mode %d Hz", g_fix001.Verify(&why) ? "verified" : why.c_str(),
         g_cfg.preciseLimiter ? "on" : "off", g_cfg.mode);

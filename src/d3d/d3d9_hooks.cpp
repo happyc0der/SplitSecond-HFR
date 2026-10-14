@@ -91,6 +91,8 @@ void InitOnce() {
     LogInit(dir);
     Log("SplitSecondHFR %s (built %s %s) loaded via the game's DXFreezer hook", kVersion, __DATE__, __TIME__);
     Log("Command line: %s", GetCommandLineA());
+    if (const char* wine = WineVersion()) Log("Running under Wine/Proton %s", wine);
+    if (g_cfg.memoryLog) StartMemoryLog();
     if (!g_cfg.enabled) {
         Log("Enabled=0 -> pass-through, nothing hooked");
         return;

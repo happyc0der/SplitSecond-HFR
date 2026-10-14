@@ -34,9 +34,13 @@ struct Config {
     bool enabled = true;           // false: pure pass-through, game behaves exactly like vanilla
     int mode = 60;                 // main loop: 60 = native 60 Hz (FIX-001), 30 = vanilla
     bool preciseLimiter = true;    // FIX-002: exact frame pacing instead of the limiter's truncated Sleep
+    bool preciseForce = false;     // PreciseLimiter=2: keep precise pacing even under Wine/Proton
     bool fixAi30 = true;           // FIX-003: AI driver update at 30 Hz cadence
     int keyToggle = VK_F8;         // switch 30 <-> 60 at runtime
+    int keyMarker = 0;             // writes a MARKER line to the log (e.g. VK_F10 = 0x79)
     bool frameLog = false;         // per-frame timing CSV (frames.csv)
+    bool memoryLog = false;        // address-space usage every MemoryLogSec (also when Enabled=0)
+    int memoryLogSec = 10;
     int statsIntervalSec = 5;      // fps summary line in hfr.log
     // Developer instrumentation (HFR_DEVTOOLS builds only, not in the public source tree). All off by default: some
     // of it makes the game's copy protection degrade the game (missing track geometry).
@@ -48,7 +52,6 @@ struct Config {
     int autoDumpFrames = 1800;
     bool crashHandler = false;
     int keyDump = 0;               // e.g. VK_F9
-    int keyMarker = 0;             // e.g. VK_F10
 };
 extern Config g_cfg;
 void LoadConfig(const std::wstring& iniPath);
@@ -71,6 +74,8 @@ bool IsReadable(const void* p, size_t n);
 // Copy after an IsReadable check; returns false (and copies nothing) if any page is not plainly readable.
 bool SafeRead(const void* src, void* dst, size_t n);
 std::string Utf8(const std::wstring& w);
+// Wine/Proton version string (ntdll!wine_get_version), or nullptr on Windows.
+const char* WineVersion();
 
 extern HMODULE g_self;
 
@@ -81,6 +86,9 @@ extern bool g_patchingAllowed;
 // Swap a slot of the game's original import table (src/core/iat.cpp); verifies the slot holds the real API.
 bool HookIatSlot(const char* dll, const char* name, void* hook, void** orig);
 void StartStatsWriter();
+void AddMarker(const char* what);
+void LogMemoryStats();
+void StartMemoryLog();
 void FrameTick(HWND deviceWindow, int64_t tEnter, int64_t tExit); // called from Present (main thread)
 
 // Main-loop timing (src/timing/limiter.cpp)
@@ -100,9 +108,7 @@ void InstallCrashHandler();
 int InstallApiHooks();
 void StartSampler();
 void RequestDump(const char* label);
-void AddMarker(const char* what);
 void InstallProbes(const std::wstring& ini);
 void ReportProbes(double seconds, uint32_t frames);
-void LogMemoryStats();
 
 } // namespace hfr
