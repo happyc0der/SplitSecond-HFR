@@ -29,6 +29,7 @@ void LoadConfig(const std::wstring& ini) {
     int precise = ReadInt(ini, L"Timing", L"PreciseLimiter", c.preciseLimiter ? 1 : 0);
     c.preciseLimiter = precise != 0;
     c.preciseForce = precise >= 2;
+    c.preciseRaw = precise;
     c.fixAi30 = ReadInt(ini, L"Fixes", L"AI30Hz", c.fixAi30) != 0;
     c.memoryLog = ReadInt(ini, L"Logging", L"MemoryLog", c.memoryLog) != 0;
     c.memoryLogSec = ReadInt(ini, L"Logging", L"MemoryLogSec", c.memoryLogSec);

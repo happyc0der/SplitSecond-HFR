@@ -35,6 +35,7 @@ struct Config {
     int mode = 60;                 // main loop: 60 = native 60 Hz (FIX-001), 30 = vanilla
     bool preciseLimiter = true;    // FIX-002: exact frame pacing instead of the limiter's truncated Sleep
     bool preciseForce = false;     // PreciseLimiter=2: keep precise pacing even under Wine/Proton
+    int preciseRaw = 1;            // PreciseLimiter value as written in the INI (logged at start-up)
     bool fixAi30 = true;           // FIX-003: AI driver update at 30 Hz cadence
     int keyToggle = VK_F8;         // switch 30 <-> 60 at runtime
     int keyMarker = 0;             // writes a MARKER line to the log (e.g. VK_F10 = 0x79)

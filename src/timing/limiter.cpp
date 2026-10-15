@@ -111,6 +111,9 @@ void LimiterInit() {
         Log("Limiter: Wine/Proton detected - precise pacing disabled (PreciseLimiter=2 forces it)");
         g_cfg.preciseLimiter = false;
     }
+    if (g_cfg.preciseLimiter && g_cfg.preciseForce && WineVersion())
+        Log("Limiter: WARNING - PreciseLimiter=2 forces precise pacing under Wine/Proton; it crashed (Proton 11 + ntsync)"
+            " and hung (Proton 10 + fsync) at the main menu in testing. Use PreciseLimiter=1 or 0.");
     if (g_cfg.preciseLimiter &&
         !HookIatSlot("KERNEL32.dll", "Sleep", reinterpret_cast<void*>(&h_Sleep), reinterpret_cast<void**>(&o_Sleep))) {
         Log("Limiter: Sleep hook failed, precise pacing disabled");

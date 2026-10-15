@@ -18,7 +18,7 @@ not frame interpolation — while keeping the game's speed and physics exactly a
 
 ## Status
 
-Version 0.1.2 — early release. Verified: steady 60 FPS, physics and handling, game speed, live 30 ↔ 60 switching.
+Version 0.1.3 — early release. Verified: steady 60 FPS, physics and handling, game speed, live 30 ↔ 60 switching.
 Not yet verified at 60 FPS: every Power Play (especially multi-stage ones), shortcut doors and ramps, all tracks.
 Please report anything that behaves differently at 60 than at 30 (F8 makes comparing easy).
 
@@ -32,7 +32,7 @@ For 120 Hz displays: run the mod at 60 FPS and add frame generation on top (e.g.
 
 ## Install
 
-1. Download `SplitSecond-HFR-v0.1.2.zip` from the [Releases](../../releases) page.
+1. Download `SplitSecond-HFR-v0.1.3.zip` from the [Releases](../../releases) page.
 2. Copy `DXFreezerServer.dll` and `SplitSecondHFR.ini` into the game folder
    (Steam → right-click Split/Second → Manage → Browse local files).
 3. Start the game.
@@ -45,7 +45,7 @@ To uninstall, delete those two files (and the `hfr_logs` folder the mod creates)
 |---|---|---|
 | `[General] Enabled` | 1 | 0 = the mod changes nothing (handy for comparing with the original game) |
 | `[Timing] Mode` | 60 | 60 = native 60 Hz; 30 = original behaviour |
-| `[Timing] PreciseLimiter` | 1 | exact frame pacing (automatically off under Wine/Proton); 2 = force on; 0 = off |
+| `[Timing] PreciseLimiter` | 1 | exact frame pacing (automatically off under Wine/Proton); 2 = force on (not recommended under Proton); 0 = off |
 | `[Fixes] AI30Hz` | 1 | AI decisions at their original 30 Hz rate |
 | `[Hotkeys] ToggleFps` | 0x77 (F8) | key that switches 30 ↔ 60; 0 disables it |
 | `[Hotkeys] Marker` | 0 | key that writes a `MARKER` line into the log (e.g. 0x79 = F10), to note when something happened |
@@ -62,8 +62,8 @@ same, and include the log when reporting an issue.
 
 The mod works under Proton. Precise frame pacing is switched off automatically there (the log says
 `Wine/Proton detected - precise pacing disabled`), because it crashed at the main menu with Proton-CachyOS 11 and
-ntsync; the game's own pacing is smooth at 60 FPS under Proton anyway. `PreciseLimiter=2` forces it back on for
-testing.
+ntsync and hung with Proton 10 + fsync; the game's own pacing is smooth at 60 FPS under Proton anyway.
+`PreciseLimiter=2` forces it back on, which is not recommended under Proton.
 
 ## Building from source
 

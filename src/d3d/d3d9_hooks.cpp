@@ -92,6 +92,9 @@ void InitOnce() {
     Log("SplitSecondHFR %s (built %s %s) loaded via the game's DXFreezer hook", kVersion, __DATE__, __TIME__);
     Log("Command line: %s", GetCommandLineA());
     if (const char* wine = WineVersion()) Log("Running under Wine/Proton %s", wine);
+    Log("Config: Enabled=%d Mode=%d PreciseLimiter=%d AI30Hz=%d ToggleFps=0x%X Marker=0x%X FrameLog=%d MemoryLog=%d",
+        g_cfg.enabled, g_cfg.mode, g_cfg.preciseRaw, g_cfg.fixAi30, g_cfg.keyToggle, g_cfg.keyMarker, g_cfg.frameLog,
+        g_cfg.memoryLog);
     if (g_cfg.memoryLog) StartMemoryLog();
     if (!g_cfg.enabled) {
         Log("Enabled=0 -> pass-through, nothing hooked");
