@@ -10,9 +10,9 @@ not frame interpolation — while keeping the game's speed and physics exactly a
 > per-build address profile at start-up; the Steam build behaves exactly as upstream. See
 > [The DLC build](#the-dlc-build-this-fork) below. Upstream: [preseznik/SplitSecond-HFR](https://github.com/preseznik/SplitSecond-HFR).
 >
-> **On the plain Steam version?** This fork's build hasn't been run on the Steam exe yet. It uses upstream's values
-> there, but the code around them was restructured. Until someone confirms it, upstream's release is the tested
-> choice for Steam; if you do try this one, please [report back](../../issues) either way.
+> **On the plain Steam version?** This fork's build has had one short test on the Steam exe (about a minute at the
+> menus, see below), where it used upstream's values and held 60 FPS. Upstream's release is still the more
+> thoroughly tested choice for Steam; if you try this one, please [report back](../../issues) either way.
 
 ## What it does
 
@@ -125,9 +125,13 @@ Returning the bare `IDirect3D9*` crashes in the NVIDIA driver at start-up.
 in 209 of its 223 five-second windows. Each of the other 14 contains a single long frame (0.2-0.8 s, and one 41 s gap),
 which looks like loading screens and alt-tabbing but wasn't confirmed.
 
+**Tested on the Steam exe** (`SplitSecond.exe` 1.0.0.1 with the Steam release's `Resident.ark`; the other data files
+were the DLC port's): `Profile: Steam 1.0.0.1`, every expected byte matched, all three fixes installed, and 60.0 FPS
+in 10 of 11 five-second windows (the other was start-up), about a minute at the menus.
+
 **Not tested yet:**
 
-- **The Steam exe with this fork's build** (see the note at the top).
+- **Racing on the Steam exe with this fork's build**, and the Steam release with all of its own data files.
 - **F8 (30 ↔ 60 switching) on the DLC build**: it uses the same code path as on Steam, but hasn't been pressed yet.
 - Most tracks and Power Plays at 60 on the DLC build, including the DLC tracks (Quarry, Minepit Park). Upstream's
   own list of unverified things above applies too.
