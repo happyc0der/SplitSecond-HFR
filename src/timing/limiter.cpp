@@ -27,17 +27,19 @@ std::atomic<int> g_requestedMode{0}; // 0 = none pending, else 30 or 60
 int g_mode = 30;
 HANDLE g_waitTimer = nullptr;
 
-constexpr uintptr_t kLimiterSleepRet = 0x00558947; // return address of the limiter's Sleep call
-constexpr uintptr_t kQpcAtTimerRead = 0x00D72358;  // int64 QPC value of the frame timer's last read
-constexpr uintptr_t kLimiterAcc = 0x00D747F4;      // f32 accumulator
+// Addresses come from the active build profile (common.h / version_gate.cpp).
 
 void BuildPatches() {
     const auto period = static_cast<uint32_t>(reinterpret_cast<uintptr_t>(&g_period));
-    g_fix001.AddOperand(0x005588C8, 0x00BA0C14, period); // movss xmm1, [1/30]   (compare)
-    g_fix001.AddOperand(0x00558908, 0x00BA0C14, period); // fld   [1/30]         (sleep amount)
-    g_fix001.AddOperand(0x00558953, 0x00BA0C14, period); // subss xmm0, [1/30]   (after sleep)
-    g_fix001.Add(0x005588E6, {0x83, 0xC6, 0x02}, {0x83, 0xC6, 0x01});                     // add esi,2 -> 1
-    g_fix001.Add(0x0055895C, {0xBE, 0x02, 0x00, 0x00, 0x00}, {0xBE, 0x01, 0x00, 0x00, 0x00}); // mov esi,2 -> 1
+    const Profile& p = *g_prof;
+    g_fix001.AddOperand(p.opMovss, 0x00BA0C14, period); // movss xmm1, [1/30]   (compare)
+    g_fix001.AddOperand(p.opFld, 0x00BA0C14, period);   // fld   [1/30]         (sleep amount)
+    g_fix001.AddOperand(p.opSubss, 0x00BA0C14, period); // subss xmm0, [1/30]   (after sleep)
+    g_fix001.Add(p.addEsi2, {0x83, 0xC6, 0x02}, {0x83, 0xC6, 0x01}); // add esi,2 -> 1
+    if (p.esiFromVariable) // DLC build: mov esi,[0xD156A0] (= 2) -> mov esi,1 ; nop
+        g_fix001.Add(p.esiAfterSleep, {0x8B, 0x35, 0xA0, 0x56, 0xD1, 0x00}, {0xBE, 0x01, 0x00, 0x00, 0x00, 0x90});
+    else                   // Steam build: mov esi,2 -> 1
+        g_fix001.Add(p.esiAfterSleep, {0xBE, 0x02, 0x00, 0x00, 0x00}, {0xBE, 0x01, 0x00, 0x00, 0x00});
 }
 
 void SetMode(int mode) {
@@ -66,10 +68,10 @@ void WaitUntil(int64_t deadline) {
 
 // Called from the Sleep hook. Returns true if the sleep was handled here.
 bool LimiterOnSleep(uintptr_t caller, DWORD ms) {
-    if (!g_cfg.preciseLimiter || caller != kLimiterSleepRet) return false;
+    if (!g_cfg.preciseLimiter || caller != g_prof->sleepRet) return false;
     const double period = g_mode == 60 ? g_period : 1.0 / 30.0;
-    const float acc = *reinterpret_cast<const float*>(kLimiterAcc);
-    const int64_t tRead = *reinterpret_cast<const int64_t*>(kQpcAtTimerRead);
+    const float acc = *reinterpret_cast<const float*>(g_prof->limiterAcc);
+    const int64_t tRead = *reinterpret_cast<const int64_t*>(g_prof->qpcAtTimerRead);
     double remaining = period - acc;
     if (remaining < 0.0) remaining = 0.0;
     if (remaining > period) remaining = period; // sanity: never wait longer than one period
@@ -121,7 +123,7 @@ void LimiterInit() {
     }
     // Tick capture is a code patch in the main loop; install it only when a fix consumes the tick count.
     if (g_cfg.fixAi30) {
-        if (auto h = safetyhook::MidHook::create(reinterpret_cast<void*>(0x00558984), &OnTicks)) g_ticksHook = std::move(*h);
+        if (auto h = safetyhook::MidHook::create(reinterpret_cast<void*>(g_prof->ticksHook), &OnTicks)) g_ticksHook = std::move(*h);
         else Log("Limiter: ticks hook FAILED (AI 30 Hz fix inactive)");
     }
     std::string why;

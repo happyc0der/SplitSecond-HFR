@@ -25,9 +25,42 @@ constexpr uintptr_t kDrmEnd = 0x021B7000;
 constexpr uintptr_t kSecuromIat = 0x0201BDB4; // live (SecuROM-merged) IAT
 constexpr uint32_t kSecuromIatSize = 0x8A0;
 
+// ---- Per-build addresses (local fork, 2026-10-18) ------------------------------------------------------------------
+// The Steam build above (stamp 4BE13C66) and the 11-May-2010 build that ships with the fan port of the console DLC
+// ("SS_Xenon_Shipping", stamp 4BE94A54, loads DXFreezerServer_d.dll). Both have the same section bases; the DLC build's
+// addresses were mapped from decrypted runtime dumps of both builds (limiter +0x8C, AI update identical code at
+// +0x160, IAT slots partly shifted by -4). VersionGateOk() selects the profile by TimeDateStamp.
+struct Profile {
+    const char* name;
+    uint32_t stamp;
+    uint32_t sizeOfImage;       // on-disk header
+    uintptr_t drmBegin, drmEnd; // SecuROM/Steam DRM sections
+    // version-gate bytes
+    uintptr_t loaderVa;         // DXFreezer loader function
+    const char* loaderHex;
+    uintptr_t dllNameVa;        // the DLL name the loader loads
+    const char* dllNameHex;
+    // FIX-001 limiter (Tick)
+    uintptr_t opMovss, opFld, opSubss; // 32-bit operands that read the 1/30 literal at 0xBA0C14
+    uintptr_t addEsi2;                 // 83 C6 02  (add esi,2 in the catch-up loop)
+    uintptr_t esiAfterSleep;           // Steam: BE 02 00 00 00 (mov esi,2); DLC: 8B 35 A0 56 D1 00 (mov esi,[ticks var = 2])
+    bool esiFromVariable;
+    uintptr_t sleepRet;                // return address of the limiter's Sleep call
+    uintptr_t ticksHook;               // after the tick clamp, before Update(ticks)
+    uintptr_t qpcAtTimerRead;          // int64 QPC of the frame timer's last read
+    uintptr_t limiterAcc;              // f32 accumulator
+    // FIX-003
+    uintptr_t aiVtblSlot, aiUpdate;
+    // original-IAT slots
+    uintptr_t iatQpc, iatQpf, iatWfso, iatSleep, iatGetTickCount, iatWfmo, iatTimeGetTime;
+};
+extern const Profile kSteamProfile;
+extern const Profile kDlcProfile;
+extern const Profile* g_prof; // set by VersionGateOk(); Steam by default
+
 inline bool InGameText(uintptr_t a) { return a >= kTextBegin && a < kTextEnd; }
-inline bool InGameImage(uintptr_t a) { return a >= kImageBase && a < kImageBase + kSizeOfImage; }
-inline bool InDrm(uintptr_t a) { return a >= kDrmBegin && a < kDrmEnd; }
+inline bool InGameImage(uintptr_t a) { return a >= kImageBase && a < kImageBase + g_prof->sizeOfImage; }
+inline bool InDrm(uintptr_t a) { return a >= g_prof->drmBegin && a < g_prof->drmEnd; }
 
 // ---- Config (SplitSecondHFR.ini next to the DLL) -----------------------------------------------------------------
 struct Config {

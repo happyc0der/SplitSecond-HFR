@@ -13,19 +13,20 @@ struct SlotInfo {
     const char* name;
     uintptr_t slot;
 };
-constexpr SlotInfo kSlots[] = {
-    {"KERNEL32.dll", "QueryPerformanceCounter", 0x00B9B104},
-    {"KERNEL32.dll", "QueryPerformanceFrequency", 0x00B9B108},
-    {"KERNEL32.dll", "WaitForSingleObject", 0x00B9B11C},
-    {"KERNEL32.dll", "Sleep", 0x00B9B120},
-    {"KERNEL32.dll", "GetTickCount", 0x00B9B168},
-    {"KERNEL32.dll", "WaitForMultipleObjects", 0x00B9B1D0},
-    {"WINMM.dll", "timeGetTime", 0x00B9B2D4},
-};
 
 } // namespace
 
 bool HookIatSlot(const char* dll, const char* name, void* hook, void** orig) {
+    const Profile& p = *g_prof; // slot addresses per build (the DLC build's later slots sit 4 bytes lower)
+    const SlotInfo kSlots[] = {
+        {"KERNEL32.dll", "QueryPerformanceCounter", p.iatQpc},
+        {"KERNEL32.dll", "QueryPerformanceFrequency", p.iatQpf},
+        {"KERNEL32.dll", "WaitForSingleObject", p.iatWfso},
+        {"KERNEL32.dll", "Sleep", p.iatSleep},
+        {"KERNEL32.dll", "GetTickCount", p.iatGetTickCount},
+        {"KERNEL32.dll", "WaitForMultipleObjects", p.iatWfmo},
+        {"WINMM.dll", "timeGetTime", p.iatTimeGetTime},
+    };
     uintptr_t slot = 0;
     for (const auto& s : kSlots)
         if (_stricmp(s.dll, dll) == 0 && strcmp(s.name, name) == 0) slot = s.slot;

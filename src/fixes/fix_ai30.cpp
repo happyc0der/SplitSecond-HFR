@@ -17,8 +17,7 @@ namespace hfr {
 
 namespace {
 
-constexpr uintptr_t kAiVtblSlot = 0x00BC0BC0; // cAIPlayer vtable slot 3
-constexpr uintptr_t kAiUpdate = 0x0051A8B0;
+// cAIPlayer vtable slot 3 and its target come from the active build profile.
 
 using AiUpdate_t = void(__thiscall*)(void* self, void* player, uint8_t* controls);
 AiUpdate_t o_AiUpdate = nullptr;
@@ -94,8 +93,8 @@ void InstallFixAi30() {
         return;
     }
     if (!g_patchingAllowed) return;
-    o_AiUpdate = reinterpret_cast<AiUpdate_t>(kAiUpdate);
-    if (SwapSlot(kAiVtblSlot, kAiUpdate, reinterpret_cast<void*>(&AiUpdateGate)))
+    o_AiUpdate = reinterpret_cast<AiUpdate_t>(g_prof->aiUpdate);
+    if (SwapSlot(g_prof->aiVtblSlot, g_prof->aiUpdate, reinterpret_cast<void*>(&AiUpdateGate)))
         Log("FIX-003 AI 30 Hz: installed (cAIPlayer::Update gated to >= 2 ticks)");
 }
 

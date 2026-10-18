@@ -125,6 +125,31 @@ void InitOnce() {
         g_patchingAllowed ? "allowed" : "disabled");
 }
 
+// The DLC build (11-May-2010, loads DXFreezerServer_d.dll) stores what the hook returns at [0xD8584C] and then
+// returns *(IDirect3D9**)result to the renderer, i.e. it expects a pointer to a holder whose first field is the
+// IDirect3D9. Two debug helpers (0x89F1C0 / 0x89F200, no static callers) call holder->[+8]->vtbl[0xE4/4] — on a
+// D3D9 device that is SetRenderState(0xCAFEB00B, marker) — so +8 points to a stand-in whose methods all return S_OK.
+// The Steam build uses the returned pointer directly.
+struct FakeObj {
+    void** vtbl;
+};
+HRESULT __stdcall FakeMethod(void*, DWORD, DWORD) { return S_OK; }
+void* g_fakeVtbl[128];
+FakeObj g_fakeObj{g_fakeVtbl};
+struct DxFreezerHolder {
+    IDirect3D9* d3d;
+    void* reserved;
+    FakeObj* dev;
+};
+DxFreezerHolder g_holder{};
+
+bool LoaderExpectsHolder() {
+    auto base = reinterpret_cast<uintptr_t>(GetModuleHandleW(nullptr));
+    auto dos = reinterpret_cast<const IMAGE_DOS_HEADER*>(base);
+    auto nt = reinterpret_cast<const IMAGE_NT_HEADERS32*>(base + dos->e_lfanew);
+    return nt->FileHeader.TimeDateStamp == kDlcProfile.stamp;
+}
+
 } // namespace
 
 } // namespace hfr
@@ -143,6 +168,12 @@ extern "C" IDirect3D9* __cdecl dxfreezer_Direct3DCreate9(UINT sdk) {
     if (d3d && g_active) {
         if (void* p = SwapVtbl(d3d, kD3D9_CreateDevice, reinterpret_cast<void*>(&h_CreateDevice)))
             o_CreateDevice = reinterpret_cast<CreateDevice_t>(p);
+    }
+    if (LoaderExpectsHolder()) {
+        for (auto& f : g_fakeVtbl) f = reinterpret_cast<void*>(&FakeMethod);
+        g_holder = {d3d, nullptr, &g_fakeObj};
+        if (g_cfg.enabled) Log("DLC-build loader: returning holder %p (d3d %p)", static_cast<void*>(&g_holder), static_cast<void*>(d3d));
+        return reinterpret_cast<IDirect3D9*>(&g_holder);
     }
     return d3d;
 }

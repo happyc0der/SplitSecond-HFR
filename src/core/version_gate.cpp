@@ -12,12 +12,11 @@ struct Expect {
     const char* what;
 };
 
-// Plaintext bytes of the supported exe (identical on disk and in memory).
+// Plaintext bytes shared by both supported exes (identical on disk and in memory); the loader and DLL name come
+// from the selected profile.
 constexpr Expect kExpect[] = {
-    {0x0089F0D0, "55 8B EC 83 EC 10 C7 05 74 26 D9 00 00 00 00 00 C7 45 F4 E0 21 C3 00", "DXFreezer loader"},
     {0x00BA0C14, "89 88 08 3D", "f32 1/30"},
     {0x00BA0D20, "89 88 88 3C", "f32 1/60"},
-    {0x00C321E0, "44 58 46 72 65 65 7A 65 72 53 65 72 76 65 72 2E 64 6C 6C 00", "\"DXFreezerServer.dll\""},
 };
 
 size_t ParseHex(const char* hex, uint8_t* out, size_t cap) {
@@ -51,6 +50,32 @@ uint32_t Crc32Update(uint32_t crc, const uint8_t* p, size_t n) {
 
 } // namespace
 
+// Steam build 385319 (upstream values, unchanged).
+const Profile kSteamProfile = {
+    "Steam 1.0.0.1", 0x4BE13C66, 0x01DB7000, 0x0118E000, 0x021B7000,
+    0x0089F0D0, "55 8B EC 83 EC 10 C7 05 74 26 D9 00 00 00 00 00 C7 45 F4 E0 21 C3 00",
+    0x00C321E0, "44 58 46 72 65 65 7A 65 72 53 65 72 76 65 72 2E 64 6C 6C 00",
+    0x005588C8, 0x00558908, 0x00558953, 0x005588E6, 0x0055895C, false,
+    0x00558947, 0x00558984, 0x00D72358, 0x00D747F4,
+    0x00BC0BC0, 0x0051A8B0,
+    0x00B9B104, 0x00B9B108, 0x00B9B11C, 0x00B9B120, 0x00B9B168, 0x00B9B1D0, 0x00B9B2D4,
+};
+
+// 11-May-2010 build shipped by the console-DLC port (SS_Xenon_Shipping). Mapped 2026-10-18 from runtime dumps:
+// limiter at 0x558910 (Steam 0x558880 + 0x8C); after the Sleep the tick count comes from a variable that holds 2
+// (mov esi,[0xD156A0]) instead of an immediate; cAIPlayer vtable 0xBC0C1C (RTTI), slot 3 = 0x51AA10 (same code).
+const Profile kDlcProfile = {
+    "DLC build (11-May-2010)", 0x4BE94A54, 0x01A18000, 0x01181000, 0x01E18000,
+    0x0089F140, "55 8B EC 83 EC 0C C7 05 4C 58 D8 00 00 00 00 00 C7 45 F4 98 21 C3 00",
+    0x00C32198, "44 58 46 72 65 65 7A 65 72 53 65 72 76 65 72 5F 64 2E 64 6C 6C 00",
+    0x00558958, 0x00558998, 0x005589E3, 0x00558976, 0x005589E7, true,
+    0x005589D7, 0x00558A15, 0x00D655E8, 0x00D67A84,
+    0x00BC0C28, 0x0051AA10,
+    0x00B9B104, 0x00B9B108, 0x00B9B11C, 0x00B9B120, 0x00B9B164, 0x00B9B1CC, 0x00B9B2D0,
+};
+
+const Profile* g_prof = &kSteamProfile;
+
 bool g_patchingAllowed = false;
 
 bool VersionGateOk() {
@@ -73,11 +98,24 @@ bool VersionGateOk() {
         Log("  section %-8s VA %08X vsize %08X ch %08X", name, static_cast<unsigned>(kImageBase + sec[i].VirtualAddress),
             static_cast<unsigned>(sec[i].Misc.VirtualSize), static_cast<unsigned>(sec[i].Characteristics));
     }
-    if (nt->FileHeader.TimeDateStamp != kTimeDateStamp) {
-        Log("VERSION GATE: unsupported exe (expected TimeDateStamp %08X)", kTimeDateStamp);
+    if (nt->FileHeader.TimeDateStamp == kDlcProfile.stamp) g_prof = &kDlcProfile;
+    else if (nt->FileHeader.TimeDateStamp == kSteamProfile.stamp) g_prof = &kSteamProfile;
+    else {
+        Log("VERSION GATE: unsupported exe (expected TimeDateStamp %08X or %08X)", kSteamProfile.stamp, kDlcProfile.stamp);
         return false;
     }
+    Log("Profile: %s", g_prof->name);
     bool ok = true;
+    const Expect perBuild[] = {{g_prof->loaderVa, g_prof->loaderHex, "DXFreezer loader"},
+                               {g_prof->dllNameVa, g_prof->dllNameHex, "DXFreezer DLL name"}};
+    for (const auto& e : perBuild) {
+        uint8_t want[64], have[64];
+        size_t n = ParseHex(e.hex, want, sizeof(want));
+        if (!SafeRead(reinterpret_cast<const void*>(e.va), have, n) || memcmp(want, have, n) != 0) {
+            Log("VERSION GATE: bytes at %08X (%s) differ", static_cast<unsigned>(e.va), e.what);
+            ok = false;
+        }
+    }
     for (const auto& e : kExpect) {
         uint8_t want[64], have[64];
         size_t n = ParseHex(e.hex, want, sizeof(want));
