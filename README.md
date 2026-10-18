@@ -4,6 +4,12 @@ Split/Second (Black Rock Studio, 2010) is locked to 30 FPS on PC, and simply rem
 at the wrong speed and breaks its physics. This mod makes the game run a **real 60 Hz game loop** instead — it is
 not frame interpolation — while keeping the game's speed and physics exactly as designed.
 
+> **This fork** adds support for the **community DLC build** of the game: the `SplitSecond.exe` that ships with the
+> Xbox 360 DLC port (built 11 May 2010, TimeDateStamp `0x4BE94A54`). Upstream only supports the Steam exe, and the DLC
+> data doesn't run with the Steam exe, so anyone using the DLC tracks and cars had no 60 FPS. The mod now picks a
+> per-build address profile at start-up; the Steam build behaves exactly as upstream. See
+> [The DLC build](#the-dlc-build-this-fork) below. Upstream: [preseznik/SplitSecond-HFR](https://github.com/preseznik/SplitSecond-HFR).
+
 ## What it does
 
 - **Native 60 FPS.** Internally the game already simulates physics in fixed 1/60 s steps; at 30 FPS it just runs two
@@ -26,18 +32,20 @@ For 120 Hz displays: run the mod at 60 FPS and add frame generation on top (e.g.
 
 ## Requirements
 
-- The **Steam version** of Split/Second (`SplitSecond.exe` 1.0.0.1). Other executables (retail discs, patched or
-  "unpacked" exes) are detected and the mod stays inactive.
+- The **Steam version** of Split/Second (`SplitSecond.exe` 1.0.0.1), or the **DLC build** described below (this
+  fork). Other executables (retail discs, patched or "unpacked" exes) are detected and the mod stays inactive.
 - Windows 10 or 11. Linux / Steam Deck via Proton works too (see below).
 
 ## Install
 
-1. Download `SplitSecond-HFR-v0.1.3.zip` from the [Releases](../../releases) page.
-2. Copy `DXFreezerServer.dll` and `SplitSecondHFR.ini` into the game folder
-   (Steam → right-click Split/Second → Manage → Browse local files).
-3. Start the game.
+1. Download `SplitSecond-HFR-v0.1.3-dlc1.zip` from the [Releases](../../releases) page.
+2. Copy `DXFreezerServer.dll`, `DXFreezerServer_d.dll` and `SplitSecondHFR.ini` into the game folder
+   (Steam → right-click Split/Second → Manage → Browse local files). The two DLLs are the same file: the Steam exe
+   loads the first name, the DLC build the second.
+3. Start the game. `hfr_logs\<date-time>\hfr.log` names the build it found
+   (`Profile: Steam 1.0.0.1` or `Profile: DLC build (11-May-2010)`).
 
-To uninstall, delete those two files (and the `hfr_logs` folder the mod creates).
+To uninstall, delete those three files (and the `hfr_logs` folder the mod creates).
 
 ## Configuration (`SplitSecondHFR.ini`)
 
@@ -84,6 +92,34 @@ ticks of 1/60 s. The mod redirects the loop's three reads of the 1/30 s period t
 the "2 ticks" constants to 1 — five small in-memory changes, each checked against the expected original bytes before
 it is written and reverted when switching back to 30. Physics are stepped once per tick, so they run exactly as
 before. The AI driver update is gated to every second tick via a pointer swap in its virtual table.
+
+## The DLC build (this fork)
+
+The DLC port's exe is a different compile of the game (May 2010, SecuROM-wrapped, so the first ~3 MB of its code is
+encrypted on disk and only readable at runtime). The game logic is the same, but every address moved, and a few
+details changed. The addresses were mapped from runtime memory dumps of both builds, matching the code
+instruction by instruction:
+
+| What | Steam 1.0.0.1 | DLC build |
+|---|---|---|
+| TimeDateStamp | `0x4BE13C66` | `0x4BE94A54` |
+| Debug-hook loader / DLL name | `DXFreezerServer.dll` | `0x89F140`, loads `DXFreezerServer_d.dll` |
+| Frame-limiter tick function | `0x558880` | `0x558910` |
+| "2 ticks" after the sleep | immediate `2` | read from a variable that holds 2 (`mov esi,[0xD156A0]`), patched to `mov esi,1` |
+| AI update (vtable slot 3 of `cAIPlayer`) | upstream value | vtable `0xBC0C1C`, slot `0xBC0C28` → `0x51AA10` |
+| IAT: GetTickCount / WaitForMultipleObjects / timeGetTime | upstream values | `0xB9B164` / `0xB9B1CC` / `0xB9B2D0` |
+
+The values live in `kDlcProfile` (`src/core/version_gate.cpp`); every patch is still checked against the expected
+original bytes before it's written. One behavioural difference: the DLC build's loader **dereferences** the value
+returned by `dxfreezer_Direct3DCreate9` (`mov [0xD8584C],eax; mov eax,[eax]`), so on that build the hook returns a
+small holder `{IDirect3D9*, 0, stand-in object}`. The game's debug helpers call the stand-in, which returns `S_OK`.
+Returning the bare `IDirect3D9*` crashes in the NVIDIA driver at start-up.
+
+Tested on the DLC build: a 19-minute play session held 60.0 FPS in 209 of its 211 five-second windows (the other two
+were loading). Not every track and Power Play has been checked at 60 yet.
+
+Related: [SplitSecond-PadFix](https://github.com/happyc0der/SplitSecond-PadFix) (Bluetooth Xbox controllers) and
+[SplitSecond-ButtonNames](https://github.com/happyc0der/SplitSecond-ButtonNames) (Xbox button names in prompts).
 
 ## License and credits
 

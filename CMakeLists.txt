@@ -59,7 +59,7 @@ if(HFR_DEVTOOLS)
   target_compile_definitions(DXFreezerServer PRIVATE HFR_DEVTOOLS=1)
 endif()
 target_compile_definitions(DXFreezerServer PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX _CRT_SECURE_NO_WARNINGS
-  HFR_VERSION="${PROJECT_VERSION}")
+  HFR_VERSION="${PROJECT_VERSION}-dlc1")
 target_compile_options(DXFreezerServer PRIVATE /W4 /permissive- /utf-8 /Zi /EHsc)
 target_link_options(DXFreezerServer PRIVATE /DEBUG /OPT:REF /OPT:ICF /SAFESEH:NO /PDBALTPATH:DXFreezerServer.pdb)
 

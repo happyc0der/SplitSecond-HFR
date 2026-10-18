@@ -89,7 +89,8 @@ bool VersionGateOk() {
     const unsigned sizeOfImage = nt->OptionalHeader.SizeOfImage;
     Log("Game image: TimeDateStamp=%08X SizeOfImage=%08X%s", static_cast<unsigned>(nt->FileHeader.TimeDateStamp),
         sizeOfImage,
-        sizeOfImage == kRuntimeSizeOfImage ? " (DRM-restored runtime header)" : sizeOfImage == kSizeOfImage ? " (disk header)" : " (unexpected)");
+        nt->FileHeader.TimeDateStamp != kSteamProfile.stamp ? ""  // the header notes below describe the Steam exe
+        : sizeOfImage == kRuntimeSizeOfImage ? " (DRM-restored runtime header)" : sizeOfImage == kSizeOfImage ? " (disk header)" : " (unexpected)");
     // The DRM rewrites the in-memory header; log what the section table looks like now.
     auto sec = IMAGE_FIRST_SECTION(nt);
     for (unsigned i = 0; i < nt->FileHeader.NumberOfSections; ++i) {
