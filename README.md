@@ -9,6 +9,10 @@ not frame interpolation — while keeping the game's speed and physics exactly a
 > data doesn't run with the Steam exe, so anyone using the DLC tracks and cars had no 60 FPS. The mod now picks a
 > per-build address profile at start-up; the Steam build behaves exactly as upstream. See
 > [The DLC build](#the-dlc-build-this-fork) below. Upstream: [preseznik/SplitSecond-HFR](https://github.com/preseznik/SplitSecond-HFR).
+>
+> **On the plain Steam version?** This fork's build hasn't been run on the Steam exe yet. It uses upstream's values
+> there, but the code around them was restructured. Until someone confirms it, upstream's release is the tested
+> choice for Steam; if you do try this one, please [report back](../../issues) either way.
 
 ## What it does
 
@@ -115,8 +119,23 @@ returned by `dxfreezer_Direct3DCreate9` (`mov [0xD8584C],eax; mov eax,[eax]`), s
 small holder `{IDirect3D9*, 0, stand-in object}`. The game's debug helpers call the stand-in, which returns `S_OK`.
 Returning the bare `IDirect3D9*` crashes in the NVIDIA driver at start-up.
 
-Tested on the DLC build: a 19-minute play session held 60.0 FPS in 209 of its 211 five-second windows (the other two
-were loading). Not every track and Power Play has been checked at 60 yet.
+### Tested and not tested (this fork)
+
+**Tested:** the DLC build on Windows 11 (RTX 3080 Ti laptop, 4K 120 Hz): a 19-minute play session ran at 59.8-60.1 FPS
+in 209 of its 223 five-second windows. Each of the other 14 contains a single long frame (0.2-0.8 s, and one 41 s gap),
+which looks like loading screens and alt-tabbing but wasn't confirmed.
+
+**Not tested yet:**
+
+- **The Steam exe with this fork's build** (see the note at the top).
+- **F8 (30 ↔ 60 switching) on the DLC build**: it uses the same code path as on Steam, but hasn't been pressed yet.
+- Most tracks and Power Plays at 60 on the DLC build, including the DLC tracks (Quarry, Minepit Park). Upstream's
+  own list of unverified things above applies too.
+- The DLC game modes, other GPUs, Windows 10, and Linux / Steam Deck on the DLC build.
+
+**Reporting:** problems on the DLC build → [this fork's issues](../../issues), with `hfr_logs\<date-time>\hfr.log`.
+On the Steam exe, check whether upstream's release does the same: if upstream works and this fork doesn't, report it
+here; otherwise report it upstream.
 
 Related: [SplitSecond-PadFix](https://github.com/happyc0der/SplitSecond-PadFix) (Bluetooth Xbox controllers) and
 [SplitSecond-ButtonNames](https://github.com/happyc0der/SplitSecond-ButtonNames) (Xbox button names in prompts).
