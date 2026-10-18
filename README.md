@@ -119,6 +119,23 @@ returned by `dxfreezer_Direct3DCreate9` (`mov [0xD8584C],eax; mov eax,[eax]`), s
 small holder `{IDirect3D9*, 0, stand-in object}`. The game's debug helpers call the stand-in, which returns `S_OK`.
 Returning the bare `IDirect3D9*` crashes in the NVIDIA driver at start-up.
 
+### Memory on the DLC build: set the large-address-aware flag
+
+Split/Second is a 32-bit program without the large-address-aware flag, so Windows gives it 2 GB of address space.
+The DLC port's data is about 50 % bigger (`Resident.ark` 1.22 GB vs 833 MB), and a long session can run out: on
+2026-10-18 the game crashed after about 10 minutes with `E_OUTOFMEMORY` (1.6 GB in use, largest free block 66 MB),
+and once more after 23 minutes with a null pointer in the AI code while the largest free block was down to 150 MB.
+With the flag set, 64-bit Windows gives the game 4 GB:
+
+```
+python tools\set-laa.py --apply      (copies the exe to SplitSecond.exe.before-laa first; --restore clears it)
+```
+
+Only one bit of the exe header changes; the DLC build still starts with it (its copy protection doesn't object) and
+the mod's memory log, which now reports the real limit, shows `of 4096` with a 2 GB free block. Not tested on the
+Steam exe, which uses less memory. Whether it fixes every long-session crash isn't proven yet (it was set the same
+day); please report crashes with the `memory:` lines from `hfr.log` (`MemoryLog=1`).
+
 ### Tested and not tested (this fork)
 
 **Tested:** the DLC build on Windows 11 (RTX 3080 Ti laptop, 4K 120 Hz): a 19-minute play session ran at 59.8-60.1 FPS
